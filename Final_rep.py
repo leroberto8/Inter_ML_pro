@@ -17,16 +17,27 @@ if data.isnull().sum().any():
     data = data.dropna()  
 
 # Prepare the features and target variable  
-X = data.drop('Y', axis=1)  
-y = data['Y'].map({'No': 0, 'Yes': 1})  # Convert target variable to numeric  
+X = data.drop('Y', axis=1)  # Features  
+print("Unique values in the target variable:", data['Y'].unique())  # Show the unique values in the target variable  
+print("Data types in the target variable:", data['Y'].dtype)  # Check the data type of Y  
+
+# Directly use the existing numeric Y values  
+y = data['Y']  # Use Y as is, since it's already numeric  
 
 # Check for missing values in the target variable  
 if y.isnull().any():  
     print("Missing values found in the target variable.")  
-    # Drop corresponding rows from the DataFrame  
-    data = data.dropna(subset=['Y'])  # Drop rows where y is NaN  
-    X = data.drop('Y', axis=1)  # Update X after dropping rows  
-    y = data['Y'].map({'No': 0, 'Yes': 1})  # Remap y again  
+
+# Verify that there are no missing values  
+if X.isnull().any().any() or y.isnull().any():  
+    print("X or y contains NaN values after dropping rows.")  
+    raise ValueError("Data still contains NaN values after cleaning.")  
+
+# One-Hot Encode Categorical Variables in X  
+X = pd.get_dummies(X, drop_first=True)  # Convert categorical variables to dummy variables  
+
+# Verify the changes  
+print("Data after one-hot encoding:\n", X.head())  
 
 # Fine-Tune the Best Model  
 def fine_tune_model(X_train, y_train):  
@@ -75,11 +86,20 @@ def generate_report(best_model, best_params, accuracy, precision, recall, f1):
 
 if __name__ == "__main__":  
     # Split the data into training and testing sets  
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)  # Adjust as needed  
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)  
 
+    # One-Hot Encode again on train/test splits (if necessary)  
+    X_train = pd.get_dummies(X_train, drop_first=True)  
+    X_test = pd.get_dummies(X_test, drop_first=True)  
+
+    # Align columns in case some columns are missing in the train/test sets  
+    X_train, X_test = X_train.align(X_test, join='left', axis=1, fill_value=0)  
+
+    # Fine-tune the model and evaluate  
     best_model, best_params, best_score = fine_tune_model(X_train, y_train)  
     accuracy, precision, recall, f1 = evaluate_model(best_model, X_test, y_test)  
-    
+
+    # Print the results  
     print(f"Best parameters: {best_params}")  
     print(f"Best cross-validation F1 score: {best_score:.2f}")  
     print(f"Tuned Random Forest - Accuracy: {accuracy:.2f}, Precision: {precision:.2f}, Recall: {recall:.2f}, F1 Score: {f1:.2f}")  
