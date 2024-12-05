@@ -3,14 +3,30 @@
 import pandas as pd  
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score  
 from sklearn.ensemble import RandomForestClassifier  
-from sklearn.model_selection import GridSearchCV  
+from sklearn.model_selection import GridSearchCV, train_test_split  
 
 # Load the cleaned dataset  
 data = pd.read_csv('cleaned_in_vehicle_coupon_data.csv')  
 
-# Assuming you have already split the data and trained the best model  
+# Check for missing values in the dataset  
+if data.isnull().sum().any():  
+    print("Missing values found in the dataset. Here are the counts:")  
+    print(data.isnull().sum())  
+    
+    # Drop rows with missing values  
+    data = data.dropna()  
+
+# Prepare the features and target variable  
 X = data.drop('Y', axis=1)  
 y = data['Y'].map({'No': 0, 'Yes': 1})  # Convert target variable to numeric  
+
+# Check for missing values in the target variable  
+if y.isnull().any():  
+    print("Missing values found in the target variable.")  
+    # Drop corresponding rows from the DataFrame  
+    data = data.dropna(subset=['Y'])  # Drop rows where y is NaN  
+    X = data.drop('Y', axis=1)  # Update X after dropping rows  
+    y = data['Y'].map({'No': 0, 'Yes': 1})  # Remap y again  
 
 # Fine-Tune the Best Model  
 def fine_tune_model(X_train, y_train):  
@@ -58,7 +74,7 @@ def generate_report(best_model, best_params, accuracy, precision, recall, f1):
             f.write(f"{key}:\n{value}\n\n")  
 
 if __name__ == "__main__":  
-    # Assuming you have already split your data into training and testing sets  
+    # Split the data into training and testing sets  
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)  # Adjust as needed  
 
     best_model, best_params, best_score = fine_tune_model(X_train, y_train)  
@@ -66,4 +82,7 @@ if __name__ == "__main__":
     
     print(f"Best parameters: {best_params}")  
     print(f"Best cross-validation F1 score: {best_score:.2f}")  
-    print(f"Tuned Random Forest -)
+    print(f"Tuned Random Forest - Accuracy: {accuracy:.2f}, Precision: {precision:.2f}, Recall: {recall:.2f}, F1 Score: {f1:.2f}")  
+
+    # Generate the final report  
+    generate_report(best_model, best_params, accuracy, precision, recall, f1)
